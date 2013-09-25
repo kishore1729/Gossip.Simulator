@@ -9,6 +9,8 @@ import scala.concurrent.duration.Duration
 import scala.collection.mutable.ArrayBuffer
 import akka.dispatch.ExecutionContexts
 import scala.concurrent.ExecutionContext
+import com.sun.jna.Platform
+import scala.compat.Platform
 
 object topologyTest {
   def main(args: Array[String]){
@@ -27,6 +29,7 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 	val n = numNodes
 	val childContext = ActorSystem("ChildNet")
 	var childDoneCount =0
+	var startTime:Long = 0
     for (i<- 1 to n){
       var msg:String="init"
       val node = childContext.actorOf(Props(new regularJoe),"Node"+ i.toString)
@@ -41,7 +44,6 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 			  msg = msg + (i-1).toString +","
 		  if(i < n)
 			  msg = msg + (i+1).toString 
-		  println(targetChild+" : "+msg)
 		  targetChild ! msg
 	    }
 	    
@@ -50,7 +52,6 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 	      var msg:String="f"+n.toString
 		  val targetChild = childContext.actorSelection("/user/Node"+ i) 
 		  msg = msg + ","+i.toString
-		  println(targetChild+" : "+msg)
 		  targetChild ! msg
 	    }
 	    
@@ -95,7 +96,6 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 	    var msg:String="g"+"pluto is not a planet anymore :("
 	    for(i <- 1 to n){
 		  val targetChild = childContext.actorSelection("/user/Node"+ i)
-		  println(targetChild+" : "+msg)
 		  targetChild ! msg
 	    }
 	  case "push-sum"=>
@@ -104,11 +104,13 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 	    println("Uncomprehensable algorithm: "+whatever+". Please ask my creators to teach me this ^_^")
 	}
 	
+	startTime = System.currentTimeMillis()
+	
 	def receive = {
 		case l:String =>
         println("Child "+l)
         childDoneCount += 1
-        if (childDoneCount == 10) context.stop(context.self)
+        if (childDoneCount == n) println(startTime - System.currentTimeMillis())
     }
 }
 
@@ -128,11 +130,11 @@ class regularJoe extends Actor {
 	  }
 	  val targetBro = context.actorSelection("/user/Node"+myActiveLines(rndInt))
 	  targetBro ! msg
-	  //need re-transmission ?
+	  //need re-transmission
 	  if(staticCount < 5 && myCount <10) {
 	    val dur = Duration.create(500, scala.concurrent.duration.MILLISECONDS);
 	    val me = context.self
-	    context.system.scheduler.scheduleOnce(dur , me,"z")
+	    context.system.scheduler.scheduleOnce(dur, me, "z")
 	  }
   }
   def receive = {
@@ -147,7 +149,7 @@ class regularJoe extends Actor {
 	          println(context.self + ": "+myCount+" "+l.tail)
 	          transmitMsg
           }
-          else if (myCount >= 10) {myCount+=1;println(context,self+" is done."+myCount)}
+          else if (myCount == 10) {myCount+=1;context.parent ! "done";println(context,self+" is done.")}
           else if (gossipMode == false) println("LOL")// check for difference and transmit
         case 'f' =>
           val input = l.tail.split(",")
