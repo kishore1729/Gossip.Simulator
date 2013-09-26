@@ -1,0 +1,130 @@
+<!doctype html>
+<!-- The Time Machine GitHub pages theme was designed and developed by Jon Rohan, on Feb 7, 2012. -->
+<!-- Follow him for fun. http://twitter.com/jonrohan. Tail his code on http://github.com/jonrohan -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <link rel="stylesheet" href="stylesheets/stylesheet.css" media="screen"/>
+  <link rel="stylesheet" href="stylesheets/pygment_trac.css"/>
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+  <script type="text/javascript" src="javascripts/script.js"></script>
+
+  <title>Gossip.simulator</title>
+  <meta name="description" content="Gossip simulator using akka actors">
+
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+</head>
+
+<body>
+
+  <div class="wrapper">
+    <header>
+      <h1 class="title">Gossip.simulator</h1>
+    </header>
+    <div id="container">
+      <p class="tagline">Gossip simulator using akka actors</p>
+      <div id="main" role="main">
+        <div class="download-bar">
+        <div class="inner">
+          <a href="https://github.com/kishore1729/Gossip.Simulator/tarball/master" class="download-button tar"><span>Download</span></a>
+          <a href="https://github.com/kishore1729/Gossip.Simulator/zipball/master" class="download-button zip"><span>Download</span></a>
+          <a href="https://github.com/kishore1729/Gossip.Simulator" class="code">View Gossip.simulator on GitHub</a>
+        </div>
+        <span class="blc"></span><span class="trc"></span>
+        </div>
+        <article class="markdown-body">
+          <h1>
+<a name="gossipsimulator" class="anchor" href="#gossipsimulator"><span class="octicon octicon-link"></span></a>Gossip.Simulator</h1>
+
+<p>Gossip simulator using akka actor</p>
+
+<p>The input provided (as command line to topologyTest.scala) will be of the form:</p>
+
+<p>topologyTest.scala numNodes topology algorithm</p>
+
+<p>Where 
+numNodes is the number of actors involved (for 2D based topologies it is round up until it is a square),
+topology is one of full, 2D, line, imp2D, 
+algorithm is one of gossip, push-sum.</p>
+
+<p>Output: Print the amount of time it took to achieve convergence of the algorithm.</p>
+
+<p>The actual network topology plays a critical role in the dissemination speed of Gossip protocols. This project experiments
+with various topologies. The topology determines who is considered a neighbour in the above algorithms.</p>
+
+<h1>
+<a name="current-topologies-implemented" class="anchor" href="#current-topologies-implemented"><span class="octicon octicon-link"></span></a>Current Topologies Implemented</h1>
+
+<p> Full Network - Every actor is a neighbour of all other actors. That is,every actor can talk directly to any other actors.</p>
+
+<p> 2D Grid - Actors form a 2D grid. The actors can only talk to the grid neighbours.</p>
+
+<p> Line: Actors are arranged in a line. Each actor has only 2 neighbours (one left and one right, unless you are the first or last actor).</p>
+
+<p> Imperfect 2D Grid: Grid arrangement but one random other neighbour is selected from the list of all actors (4+1 neighbours).</p>
+
+<h1>
+<a name="communication-algorithms" class="anchor" href="#communication-algorithms"><span class="octicon octicon-link"></span></a>Communication Algorithms</h1>
+
+<p>Gossip Algorithm for information propagation ----&gt;</p>
+
+<p> Starting: A participant(actor) it told/sent a rumor(fact) by the main process</p>
+
+<p> Step: Each actor selects a random neighbour and tells it the rumor</p>
+
+<p> Termination: Each actor keeps track of rumors and how many times it has heard the rumor. It stops transmitting once it has heard the rumor N times (N is currently set to 10 which is arbitrary, This parameter can be modified in the regularJoe class).</p>
+
+<p>Push-Sum algorithm for sum computation  ----&gt;</p>
+
+<p> State: Each actor Ai maintains two quantities: s and w. Initially, s = xi = i (that is actor number i has value i) and w = 1
+ 
+Starting: Ask one of the actors to start from the main process.</p>
+
+<p>Receive: Messages sent and received are pairs of the form (s;w). Upon receive, an actor should add received pair to its own corresponding values. Upon receive, each actor selects a random neighbour and sends it a message.</p>
+
+<p>Send: When sending a message to another actor, half of s and w is kept by the sending actor and half is placed in the message.</p>
+
+<p>Sum estimate: At any given moment of time, the sum estimate is s/w where s and w are the current values of an actor.</p>
+
+<p>Termination: If an actors ratio s/w did not change more than 10^-10 in 3 consecutive rounds the actor terminates.</p>
+
+<h1>
+<a name="bonus-section" class="anchor" href="#bonus-section"><span class="octicon octicon-link"></span></a>Bonus section</h1>
+
+<p>Yet to Implement node failure (a node dies) and communication failure models (a connection dies temporarily or permanently)</p>
+        </article>
+      </div>
+    </div>
+    <footer>
+      <div class="owner">
+      <p><a href="https://github.com/kishore1729" class="avatar"><img src="https://1.gravatar.com/avatar/540297feec5303e38d6f3062d4318021?d=https%3A%2F%2Fidenticons.github.com%2F07e814c3461a635e7ec61509a3adf9bf.png&amp;s=30" width="48" height="48"/></a> <a href="https://github.com/kishore1729">kishore1729</a> maintains <a href="https://github.com/kishore1729/Gossip.Simulator">Gossip.simulator</a></p>
+
+
+      </div>
+      <div class="creds">
+        <small>This page generated using <a href="https://pages.github.com/">GitHub Pages</a><br/>theme by <a href="https://twitter.com/jonrohan/">Jon Rohan</a></small>
+      </div>
+    </footer>
+  </div>
+  <div class="current-section">
+    <a href="#top">Scroll to top</a>
+    <a href="https://github.com/kishore1729/Gossip.Simulator/tarball/master" class="tar">tar</a><a href="https://github.com/kishore1729/Gossip.Simulator/zipball/master" class="zip">zip</a><a href="" class="code">source code</a>
+    <p class="name"></p>
+  </div>
+
+            <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-27229044-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+</body>
+</html>
