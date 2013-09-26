@@ -11,6 +11,8 @@ import akka.dispatch.ExecutionContexts
 import scala.concurrent.ExecutionContext
 import com.sun.jna.Platform
 import scala.compat.Platform
+import sun.reflect.MagicAccessorImpl
+import akka.actor.Kill
 
 object topologyTest {
   def main(args: Array[String]){
@@ -89,15 +91,35 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 			  println(targetChild+" : "+msg)
 			  targetChild ! msg
 		    }
+		    
+		case "torus" =>
+			val magicNumber = math.sqrt(n).floor.toInt
+			val actualN = math.pow(magicNumber, 2).toInt
+			for(i <- 1 to actualN){
+				var msg:String="o"+i.toString
+				val targetChild = childContext.actorSelection("/user/Node"+ i)
+				if(i-magicNumber > 0) msg = msg + "," + (i-magicNumber).toString  //Upper row check
+				else msg = msg + "," + (if (i % magicNumber !=0)(actualN - magicNumber + (i % magicNumber)) else actualN).toString
+				if(i+magicNumber <= actualN) msg = msg + "," + (i+magicNumber).toString  //lower row check
+				else msg = msg + "," + (if (i % magicNumber !=0)i % magicNumber else magicNumber).toString
+				if(i % magicNumber == 0) msg = msg + "," + (i-1).toString + "," + (i+1-magicNumber).toString // right column check
+				else if (i % magicNumber == 1) msg = msg + "," + (i+1).toString + "," + (i-1+magicNumber).toString// left column check
+				else msg = msg + "," + (i-1).toString + "," + (i+1).toString // middle of the row
+				
+				println(targetChild+" : "+msg)
+				targetChild ! msg
+			}
 	}
 	
 	algo.toLowerCase() match {
 	  case "gossip"=>
-	    var msg:String="g"+"pluto is not a planet anymore :("
-	    for(i <- 1 to n){
-		  val targetChild = childContext.actorSelection("/user/Node"+ i)
-		  targetChild ! msg
+	    val msg:String="g"+"pluto is not a planet anymore :("
+	    var rndInt = Int.MaxValue
+	    while (rndInt > n || rndInt == 0) {
+		  rndInt = (Random.nextInt % n).abs
 	    }
+	    val targetChild = childContext.actorSelection("/user/Node"+ rndInt)
+	    targetChild ! msg
 	  case "push-sum"=>
 	    //send some message
 	  case whatever =>
@@ -108,9 +130,17 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 	
 	def receive = {
 		case l:String =>
-        println("Child "+l)
-        childDoneCount += 1
-        if (childDoneCount == n) println(startTime - System.currentTimeMillis())
+		  l.toLowerCase().head match {
+		    case 'd' => //done
+		        println("Child "+l)
+		        childDoneCount += 1
+		        if (childDoneCount == n) println(startTime - System.currentTimeMillis())
+		    case 'e' => //error
+		        println("Error in Joe! I am stopping everything!")
+		        context.children.foreach(context.stop(_))
+		        println("stopped children, now I quit!")
+		        context.stop(context.self)
+		  }
     }
 }
 
@@ -172,7 +202,7 @@ class regularJoe extends Actor {
         case 'p'=>
           gossipMode = false
           //push sum part
-        case whatever => println("error in Joe, got this: "+whatever)
+        case whatever => {println("error in Joe, got this: "+whatever); sender ! "error"}
       }
   }
 }
