@@ -13,6 +13,7 @@ import com.sun.jna.Platform
 import scala.compat.Platform
 import sun.reflect.MagicAccessorImpl
 import akka.actor.Kill
+import akka.actor.ActorRef
 
 object topologyTest {
   def main(args: Array[String]){
@@ -20,7 +21,7 @@ object topologyTest {
 	    println("Incorrect input parameters")
 	  }
 	  else {
-	    val masContext = ActorSystem("BossNet")
+	    val masContext = ActorSystem("OneNet")
 		val boss = masContext.actorOf(Props(new superBoss(args(0).toInt,args(1),args(2))),"bossGuy")
 	  }
 	}
@@ -29,8 +30,8 @@ object topologyTest {
 class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 
 	val n = numNodes
-	val childContext = ActorSystem("ChildNet")
-	var childDoneCount =0
+	val childContext = ActorSystem("OneNet")
+	var childDoneState = Array.fill[Boolean](n)(false)
 	var startTime:Long = 0
     for (i<- 1 to n){
       var msg:String="init"
@@ -118,10 +119,17 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 	    while (rndInt > n || rndInt == 0) {
 		  rndInt = (Random.nextInt % n).abs
 	    }
+	    println(context.self)
 	    val targetChild = childContext.actorSelection("/user/Node"+ rndInt)
 	    targetChild ! msg
 	  case "push-sum"=>
-	    //send some message
+	    val msg:String="p"+0.0.toString + "," + 0.0.toString
+	    var rndInt = Int.MaxValue
+	    while (rndInt > n || rndInt == 0) {
+		  rndInt = (Random.nextInt % n).abs
+	    }
+	    val targetChild = childContext.actorSelection("/user/Node"+ rndInt)
+	    targetChild ! msg
 	  case whatever =>
 	    println("Uncomprehensable algorithm: "+whatever+". Please ask my creators to teach me this ^_^")
 	}
@@ -133,19 +141,26 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 		  l.toLowerCase().head match {
 		    case 'd' => //done
 		        println("Child "+l)
-		        childDoneCount += 1
-		        if (childDoneCount == n) println(startTime - System.currentTimeMillis())
+		        childDoneState.update(l.tail.toInt, true)
+		        var childCount =0;
+		        for (x <- childDoneState)
+		          if(x == true) childCount += 1
+		        println(childDoneState.deep.mkString(","))
+		        if (childCount == n) println(startTime - System.currentTimeMillis())
 		    case 'e' => //error
 		        println("Error in Joe! I am stopping everything!")
 		        context.children.foreach(context.stop(_))
 		        println("stopped children, now I quit!")
 		        context.stop(context.self)
+		    case whatever =>
+		        println("Master got this "+whatever)
 		  }
     }
 }
 
 class regularJoe extends Actor {
   import context._
+  var parentNode:ActorRef = null
   var myCount =0
   var gossipMode = true
   var rumor =""
@@ -160,17 +175,11 @@ class regularJoe extends Actor {
 	  }
 	  val targetBro = context.actorSelection("/user/Node"+myActiveLines(rndInt))
 	  targetBro ! msg
-	  //need re-transmission
-	  if(staticCount < 5 && myCount <10) {
-	    val dur = Duration.create(500, scala.concurrent.duration.MILLISECONDS);
-	    val me = context.self
-	    context.system.scheduler.scheduleOnce(dur, me, "z")
-	  }
   }
   def receive = {
     case l:String =>
       l.head match{
-        case 'i' => println(context.self + ": "+"Joe Initalized.")
+        case 'i' => parentNode = sender;println(context.self + ": "+"Joe Initalized.")
         case 'l' =>
           myActiveLines ++= l.tail.split(",")
         case 'r' =>
@@ -179,7 +188,13 @@ class regularJoe extends Actor {
 	          println(context.self + ": "+myCount+" "+l.tail)
 	          transmitMsg
           }
-          else if (myCount == 10) {myCount+=1;context.parent ! "done";println(context,self+" is done.")}
+          else if (myCount == 10) {
+        	  myCount+=1;
+        	  val sendmsg = "d"+myActiveLines(0);
+        	  parentNode ! sendmsg;
+        	  //context.actorSelection("/user/bossGuy") ! sendmsg;
+        	  println(context.self +" is done.")
+          }
           else if (gossipMode == false) println("LOL")// check for difference and transmit
         case 'f' =>
           val input = l.tail.split(",")
@@ -193,11 +208,19 @@ class regularJoe extends Actor {
           myActiveLines ++= l.tail.split(",")
         case 'm' =>
           myActiveLines ++= l.tail.split(",")
+        case 'o' =>
+          myActiveLines ++= l.tail.split(",")
         case 'z'=>
           transmitMsg
         case 'g'=>
           gossipMode = true
           rumor = l.tail
+          //need re-transmission
+		  if(staticCount < 5 && myCount <10) {
+		    val dur = Duration.create(500, scala.concurrent.duration.MILLISECONDS);
+		    val me = context.self
+		    context.system.scheduler.scheduleOnce(dur, me, "z")
+		  }
           transmitMsg
         case 'p'=>
           gossipMode = false
