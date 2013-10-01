@@ -119,7 +119,6 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 	    while (rndInt > n || rndInt == 0) {
 		  rndInt = (Random.nextInt % n).abs
 	    }
-	    println(context.self)
 	    val targetChild = childContext.actorSelection("/user/Node"+ rndInt)
 	    targetChild ! msg
 	  case "push-sum"=>
@@ -140,13 +139,22 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 		case l:String =>
 		  l.toLowerCase().head match {
 		    case 'd' => //done
-		        println("Child "+l)
-		        childDoneState.update(l.tail.toInt, true)
+		        //println("Child "+l)
+		        childDoneState.update((l.tail.toInt-1), true)
 		        var childCount =0;
 		        for (x <- childDoneState)
 		          if(x == true) childCount += 1
-		        println(childDoneState.deep.mkString(","))
-		        if (childCount == n) println(startTime - System.currentTimeMillis())
+		        //println(childDoneState.deep.mkString(","))
+		        println("Time taken: " + (System.currentTimeMillis() - startTime).toString)
+		        if(childCount == n) {
+		          println("Percentage complete: 100")
+		          context.children.foreach(context.stop(_))
+		          context.stop(self)
+		          exit
+		        }
+		        else {
+		          println("Percentage complete: "+(childCount*100/n).toString)
+		        }
 		    case 'e' => //error
 		        println("Error in Joe! I am stopping everything!")
 		        context.children.foreach(context.stop(_))
@@ -167,7 +175,7 @@ class regularJoe extends Actor {
   var staticCount = 0
   var myActiveLines = ArrayBuffer[String]()
   def transmitMsg = {
-	  val msg = if(gossipMode == true)"r"+rumor else "r"
+	  val msg = if(gossipMode == true)"rt"+rumor else "rf"
 	  val len = myActiveLines.length
 	  var rndInt = Int.MaxValue
 	  while (rndInt > len || rndInt == 0) {
@@ -179,20 +187,29 @@ class regularJoe extends Actor {
   def receive = {
     case l:String =>
       l.head match{
-        case 'i' => parentNode = sender;println(context.self + ": "+"Joe Initalized.")
+        case 'i' => 
+          parentNode = sender
+          //println(context.self + ": "+"Joe Initalized.")
         case 'l' =>
           myActiveLines ++= l.tail.split(",")
         case 'r' =>
+          l.tail.head match {
+            case 't'=> gossipMode = true
+            case 'f'=> gossipMode = false
+          }
           if (gossipMode == true && myCount< 10) {
 	          myCount +=1
-	          println(context.self + ": "+myCount+" "+l.tail)
+	          rumor = l.tail.tail
+	          val sendmsg = "d"+myActiveLines(0);
+        	  	parentNode ! sendmsg;
+	          //println(context.self + ": "+myCount+" "+l.tail)
 	          transmitMsg
           }
           else if (myCount == 10) {
         	  myCount+=1;
         	  val sendmsg = "d"+myActiveLines(0);
         	  parentNode ! sendmsg;
-        	  //context.actorSelection("/user/bossGuy") ! sendmsg;
+        	  context.actorSelection("/user/bossGuy") ! sendmsg;
         	  println(context.self +" is done.")
           }
           else if (gossipMode == false) println("LOL")// check for difference and transmit
@@ -216,11 +233,13 @@ class regularJoe extends Actor {
           gossipMode = true
           rumor = l.tail
           //need re-transmission
-		  if(staticCount < 5 && myCount <10) {
+		  if(staticCount < 5 && myCount <9) {
 		    val dur = Duration.create(500, scala.concurrent.duration.MILLISECONDS);
 		    val me = context.self
 		    context.system.scheduler.scheduleOnce(dur, me, "z")
 		  }
+          val sendmsg = "d"+myActiveLines(0);
+        	  parentNode ! sendmsg;
           transmitMsg
         case 'p'=>
           gossipMode = false
