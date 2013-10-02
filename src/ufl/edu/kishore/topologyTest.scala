@@ -111,7 +111,7 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 				targetChild ! msg
 			}
 	}
-	
+	println("--> Topology Built <--")
 	algo.toLowerCase() match {
 	  case "gossip"=>
 	    val msg:String="g"+"pluto is not a planet anymore :("
@@ -145,7 +145,7 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 		        for (x <- childDoneState)
 		          if(x == true) childCount += 1
 		        //println(childDoneState.deep.mkString(","))
-		        println("Time taken: " + (System.currentTimeMillis() - startTime).toString)
+		        println("Time taken: " + (System.currentTimeMillis() - startTime).toString+"ms")
 		        if(childCount == n) {
 		          println("Percentage complete: 100")
 		          context.children.foreach(context.stop(_))
@@ -153,7 +153,7 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 		          exit
 		        }
 		        else {
-		          println("Percentage complete: "+(childCount*100/n).toString)
+		          println("Percentage complete: "+(childCount*100.0/n).toString)
 		        }
 		    case 'e' => //error
 		        println("Error in Joe! I am stopping everything!")
