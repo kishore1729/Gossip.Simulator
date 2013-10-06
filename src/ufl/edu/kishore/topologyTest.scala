@@ -146,13 +146,20 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 		          if(x == true) childCount += 1
 		        //println(childDoneState.deep.mkString(","))
 		        println("Time taken: " + (System.currentTimeMillis() - startTime).toString+"ms")
-		        
+		        if (revMsg.size <= 1){
 		        var percentCovered = (childCount*100.0/n)
-		        println("Percentage complete: "+percentCovered.toString)
-		        if(percentCovered > 90.0) {
-		          context.children.foreach(context.stop(_))
-		          context.stop(self)
-		          exit
+			        println("Percentage complete: "+percentCovered.toString)
+			        if(percentCovered > 95.0) {
+			          context.children.foreach(context.stop(_))
+			          context.stop(self)
+			          exit
+			        }
+		        }
+		        else {
+		        	println("Final Ratio: "+revMsg(1))
+		        	context.children.foreach(context.stop(_))
+			        context.stop(self)
+			        exit
 		        }
 		    case 'e' => //error
 		        println("Error in Joe! I am stopping everything!")
@@ -203,9 +210,14 @@ class regularJoe extends Actor {
 	          rumor = l.tail.tail
 	          val sendmsg = "d"+myActiveLines(0);
         	  	parentNode ! sendmsg;
-	          //println(context.self + ": "+myCount+" "+l.tail)
 	          transmitMsg
           }
+          //need re-transmission
+		  if(gossipMode == true && staticCount < 5 && myCount <9) {
+		    val dur = Duration.create(50, scala.concurrent.duration.MILLISECONDS);
+		    val me = context.self
+		    context.system.scheduler.scheduleOnce(dur, me, "z")
+		  }
           else if (myCount == 10) {
         	  myCount+=1;
         	  val sendmsg = "d"+myActiveLines(0);
@@ -236,6 +248,7 @@ class regularJoe extends Actor {
         		  println("Terminated actor is getting messages")
         	  }
           }
+          
         case 'f' =>
           val input = l.tail.split(",")
           val numNodes = input(0).toInt
@@ -255,12 +268,6 @@ class regularJoe extends Actor {
         case 'g'=>
           gossipMode = true
           rumor = l.tail
-          //need re-transmission
-		  if(staticCount < 5 && myCount <9) {
-		    val dur = Duration.create(50, scala.concurrent.duration.MILLISECONDS);
-		    val me = context.self
-		    context.system.scheduler.scheduleOnce(dur, me, "z")
-		  }
           val sendmsg = "d"+myActiveLines(0);
         	  parentNode ! sendmsg;
           transmitMsg
