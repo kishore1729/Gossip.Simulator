@@ -1,4 +1,5 @@
 package ufl.edu.kishore
+
 import akka.actor.Actor
 import akka.actor.Actor._
 import akka.actor.Props
@@ -14,7 +15,7 @@ import sun.reflect.MagicAccessorImpl
 import akka.actor.Kill
 import akka.actor.ActorRef
 
-object topologyTest {
+object Project2Bonus {
   def main(args: Array[String]){
 	  if(args.length != 3){
 	    println("Incorrect input parameters")
@@ -26,9 +27,10 @@ object topologyTest {
 	}
 }
 
-class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
-
+/*class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
+	import context._
 	val n = numNodes
+	val nKill = 5//number of random nodes to kill
 	val childContext = ActorSystem("OneNet")
 	var childDoneState = Array.fill[Boolean](n)(false)
 	var startTime:Long = 0
@@ -131,7 +133,9 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 	  case whatever =>
 	    println("Uncomprehensable algorithm: "+whatever+". Please ask my creators to teach me this ^_^")
 	}
-	
+	val dur = Duration.create(50, scala.concurrent.duration.MILLISECONDS);
+	val me = context.self
+    context.system.scheduler.scheduleOnce(dur, me, "z")
 	startTime = System.currentTimeMillis()
 	
 	def receive = {
@@ -160,6 +164,17 @@ class superBoss(numNodes:Int, topology:String, algo:String) extends Actor {
 			        context.stop(self)
 			        exit
 		        }
+		    case 'z'=>//wake and kill some nodes //---->New Code <------
+		      while(nKill > 0) {
+		        var rndInt = Int.MaxValue
+			    while (rndInt > n || rndInt == 0) {
+				  rndInt = (Random.nextInt % n).abs
+			    }
+		        val targetChild = childContext.actorSelection("/user/Node"+ rndInt)
+        		targetChild ! "j" //because joker is awesome at random killing
+		      }
+		    case 'x'=> //some child node dies
+		        for(elem <- context.children) elem ! "a"+l.tail  //---->New Code <------
 		    case 'e' => //error
 		        println("Error in Joe! I am stopping everything!")
 		        context.children.foreach(context.stop(_))
@@ -181,12 +196,18 @@ class regularJoe extends Actor {
   var staticCount = 0
   var epsilonCount = 0
   var myActiveLines = ArrayBuffer[String]()
+  var myDeadLines = ArrayBuffer[String]() //----> Only 1 line New Code <------
   def transmitMsg = {
 	  val msg = if(gossipMode == true)"rt"+rumor else "rf,"+s.toString+","+w.toString
 	  val len = myActiveLines.length
 	  var rndInt = Int.MaxValue
 	  while (rndInt > len || rndInt == 0) {
 		  rndInt = (Random.nextInt % len).abs
+		  if(myDeadLines.length > 0){ //---->New Code <------
+			  for(elem <- myDeadLines) {
+			    if(rndInt == elem.toInt) rndInt = 0
+			  }
+		  } //---->New Code <------
 	  }
 	  val targetBro = context.actorSelection("/user/Node"+myActiveLines(rndInt))
 	  targetBro ! msg
@@ -220,6 +241,7 @@ class regularJoe extends Actor {
         	  myCount+=1;
         	  val sendmsg = "d"+myActiveLines(0);
         	  parentNode ! sendmsg;
+        	  //context.actorSelection("/user/bossGuy") ! sendmsg;
         	  println(context.self +" is done.")
           }
           else if (gossipMode == false) {
@@ -274,7 +296,12 @@ class regularJoe extends Actor {
           ratio = s/w
           dratio = (ratio_old-ratio).abs
           transmitMsg
+        case 'c'=> // node is deleted update coming in from bossGuy  ---->New Code <------
+          myDeadLines ++= l.tail.split(",")
+        case 'j'=> //parent is killing you for testing node failure analysis
+          parentNode ! "x"+myActiveLines(0)
+          context.stop(self)    //---->New Code <------
         case whatever => {println("error in Joe, got this: "+whatever); sender ! "error"}
       }
   }
-}
+}*/
